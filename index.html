@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🔐 Painel de Keys</title>
+    <title>🔐 Painel de Keys - MOD KEYS</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -19,11 +19,13 @@
             border-radius: 20px;
             padding: 30px;
             border: 2px solid #ff00ff;
+            box-shadow: 0 0 20px rgba(255,0,255,0.3);
         }
         h1 {
             color: #ff00ff;
             text-align: center;
             margin-bottom: 30px;
+            text-shadow: 0 0 10px #ff00ff;
         }
         .input-group {
             margin-bottom: 20px;
@@ -32,6 +34,7 @@
             display: block;
             margin-bottom: 8px;
             color: #888;
+            font-size: 14px;
         }
         input, select {
             width: 100%;
@@ -41,6 +44,11 @@
             border-radius: 10px;
             color: white;
             font-size: 16px;
+            transition: 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #ff00ff;
         }
         button {
             width: 100%;
@@ -53,6 +61,11 @@
             font-weight: bold;
             cursor: pointer;
             margin: 10px 0;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #cc00cc;
+            transform: scale(1.02);
         }
         .key-display {
             background: #222;
@@ -67,10 +80,20 @@
             font-size: 24px;
             font-weight: bold;
             word-break: break-all;
+            margin: 10px 0;
+        }
+        #status {
+            color: #ffaa00;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: #222;
+            border-radius: 5px;
         }
         .keys-list {
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
+            margin-top: 20px;
         }
         .key-item {
             background: #222;
@@ -82,15 +105,16 @@
         .key-value {
             color: #ff00ff;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
+            margin-bottom: 5px;
         }
         .key-info {
             color: #888;
             font-size: 12px;
-            margin-top: 5px;
         }
         .status-ativo { color: #00ff00; }
         .status-usado { color: #ff0000; }
+        .status-expirado { color: #ff8800; }
     </style>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -100,9 +124,11 @@
     <div class="container">
         <h1>🔐 PAINEL DE KEYS</h1>
         
+        <div id="status">🔄 Conectando ao Firebase...</div>
+        
         <div class="input-group">
             <label>👤 Cliente</label>
-            <input type="text" id="cliente" placeholder="Nome do cliente">
+            <input type="text" id="cliente" placeholder="Nome do cliente" value="Cliente VIP">
         </div>
         
         <div class="input-group">
@@ -111,7 +137,7 @@
                 <option value="1">1 dia</option>
                 <option value="7">7 dias</option>
                 <option value="15">15 dias</option>
-                <option value="30">30 dias</option>
+                <option value="30" selected>30 dias</option>
                 <option value="60">60 dias</option>
                 <option value="90">90 dias</option>
             </select>
@@ -120,94 +146,153 @@
         <button onclick="gerarKey()">🎲 GERAR NOVA KEY</button>
         
         <div class="key-display" id="keyDisplay" style="display: none;">
-            <h3>✅ KEY GERADA:</h3>
+            <h3 style="color: #00ff00;">✅ KEY GERADA!</h3>
             <div class="key" id="generatedKey"></div>
-            <button onclick="copiarKey()" style="margin-top: 15px;">📋 COPIAR</button>
+            <button onclick="copiarKey()" style="background: #00ff00; color: black;">📋 COPIAR KEY</button>
         </div>
         
-        <h3 style="margin: 20px 0 10px; color: #888;">📋 KEYS ATIVAS:</h3>
+        <h3 style="margin: 20px 0 10px; color: #888;">📋 ÚLTIMAS KEYS GERADAS:</h3>
         <div class="keys-list" id="keysList"></div>
     </div>
 
     <script>
-        // Config Firebase (COLOQUE SEUS DADOS AQUI!)
+        // ===========================================
+        // SUAS CONFIGURAÇÕES DO FIREBASE
+        // ===========================================
         const firebaseConfig = {
-  apiKey: "AIzaSyDjOgky_h2P8uAGQDtvDB7276Gx10GieRg",
-  authDomain: "mod-keys.firebaseapp.com",
-  projectId: "mod-keys",
-  storageBucket: "mod-keys.firebasestorage.app",
-  messagingSenderId: "53608595078",
-  appId: "1:53608595078:web:170352af5caf143c415b07"
-};
+            apiKey: "AIzaSyDjOgky_h2P8uAGQDtvDB7276Gx10GieRg",
+            authDomain: "mod-keys.firebaseapp.com",
+            projectId: "mod-keys",
+            storageBucket: "mod-keys.firebasestorage.app",
+            messagingSenderId: "53608595078",
+            appId: "1:53608595078:web:170352af5caf143c415b07"
+        };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Inicializar Firebase
+        let db = null;
+        const statusDiv = document.getElementById('status');
 
-        async function gerarKey() {
-            // Gerar key (formato: XXXX-XXXX-XXXX-XXXX)
-            let key = '';
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            for (let i = 0; i < 16; i++) {
-                if (i > 0 && i % 4 === 0) key += '-';
-                key += chars[Math.floor(Math.random() * chars.length)];
-            }
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            statusDiv.innerHTML = '✅ Conectado ao Firebase com sucesso!';
+            statusDiv.style.color = '#00ff00';
             
-            const dias = parseInt(document.getElementById('validade').value);
-            const agora = new Date();
-            const expira = new Date();
-            expira.setDate(agora.getDate() + dias);
-            
-            await db.collection('keys').add({
-                key: key,
-                ativa: true,
-                criada_em: agora.toISOString(),
-                expira_em: expira.toISOString(),
-                cliente: document.getElementById('cliente').value || 'Anônimo',
-                device_id: '',
-                ativada_em: null
-            });
-            
-            document.getElementById('generatedKey').textContent = key;
-            document.getElementById('keyDisplay').style.display = 'block';
+            // Carregar keys automaticamente
             carregarKeys();
+            
+        } catch (error) {
+            statusDiv.innerHTML = '❌ Erro ao conectar: ' + error.message;
+            statusDiv.style.color = '#ff0000';
+            console.error('Erro:', error);
         }
 
+        // Função para gerar key
+        async function gerarKey() {
+            if (!db) {
+                alert('Firebase não está conectado!');
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '🔄 Gerando key...';
+                
+                // Gerar key aleatória (formato: XXXX-XXXX-XXXX-XXXX)
+                let key = '';
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                for (let i = 0; i < 16; i++) {
+                    if (i > 0 && i % 4 === 0) key += '-';
+                    key += chars[Math.floor(Math.random() * chars.length)];
+                }
+                
+                const dias = parseInt(document.getElementById('validade').value);
+                const agora = new Date();
+                const expira = new Date();
+                expira.setDate(agora.getDate() + dias);
+                
+                // Salvar no Firebase
+                await db.collection('keys').add({
+                    key: key,
+                    ativa: true,
+                    criada_em: agora.toISOString(),
+                    expira_em: expira.toISOString(),
+                    cliente: document.getElementById('cliente').value || 'Anônimo',
+                    device_id: '',
+                    ativada_em: null
+                });
+                
+                // Mostrar key gerada
+                document.getElementById('generatedKey').textContent = key;
+                document.getElementById('keyDisplay').style.display = 'block';
+                statusDiv.innerHTML = '✅ Key gerada com sucesso!';
+                
+                // Atualizar lista
+                carregarKeys();
+                
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Erro ao gerar key: ' + error.message;
+                console.error('Erro:', error);
+            }
+        }
+
+        // Função para copiar key
         function copiarKey() {
             const key = document.getElementById('generatedKey').textContent;
             navigator.clipboard.writeText(key);
-            alert('Key copiada!');
+            statusDiv.innerHTML = '📋 Key copiada para área de transferência!';
         }
 
+        // Função para carregar keys do Firebase
         async function carregarKeys() {
-            const snapshot = await db.collection('keys')
-                .orderBy('criada_em', 'desc')
-                .get();
+            if (!db) return;
             
-            let html = '';
-            snapshot.forEach(doc => {
-                const k = doc.data();
-                const ativa = k.ativa && new Date(k.expira_em) > new Date();
-                const status = ativa ? '🟢 ATIVA' : '🔴 INATIVA';
-                const statusClass = ativa ? 'status-ativo' : 'status-usado';
+            try {
+                const snapshot = await db.collection('keys')
+                    .orderBy('criada_em', 'desc')
+                    .limit(10)
+                    .get();
                 
-                html += `
-                    <div class="key-item">
-                        <div class="key-value">${k.key}</div>
-                        <div class="key-info">
-                            👤 ${k.cliente}<br>
-                            📅 Criada: ${new Date(k.criada_em).toLocaleDateString()}<br>
-                            ⏰ Expira: ${new Date(k.expira_em).toLocaleDateString()}<br>
-                            <span class="${statusClass}">${status}</span>
-                            ${k.device_id ? '<br>📱 ' + k.device_id.substring(0,8) + '...' : ''}
+                let html = '';
+                snapshot.forEach(doc => {
+                    const k = doc.data();
+                    const agora = new Date();
+                    const expira = new Date(k.expira_em);
+                    const ativa = k.ativa && expira > agora;
+                    
+                    let statusClass = '';
+                    let statusText = '';
+                    
+                    if (!k.ativa) {
+                        statusClass = 'status-usado';
+                        statusText = '🔴 USADA';
+                    } else if (expira <= agora) {
+                        statusClass = 'status-expirado';
+                        statusText = '🟠 EXPIRADA';
+                    } else {
+                        statusClass = 'status-ativo';
+                        statusText = '🟢 ATIVA';
+                    }
+                    
+                    html += `
+                        <div class="key-item">
+                            <div class="key-value">${k.key}</div>
+                            <div class="key-info">
+                                👤 ${k.cliente}<br>
+                                📅 Criada: ${new Date(k.criada_em).toLocaleDateString()}<br>
+                                ⏰ Expira: ${new Date(k.expira_em).toLocaleDateString()}<br>
+                                <span class="${statusClass}">${statusText}</span>
+                                ${k.device_id ? '<br>📱 ' + k.device_id.substring(0,8) + '...' : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('keysList').innerHTML = html;
+                    `;
+                });
+                
+                document.getElementById('keysList').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Erro ao carregar keys:', error);
+            }
         }
-
-        carregarKeys();
     </script>
 </body>
 </html>
