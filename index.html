@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 Painel de Keys</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0a0a; 
+            font-family: Arial, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 30px;
+            border: 2px solid #ff00ff;
+        }
+        h1 {
+            color: #ff00ff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            background: #ff00ff;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #cc00cc;
+        }
+        .key-display {
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px dashed #ff00ff;
+            margin-top: 20px;
+        }
+        .key {
+            color: #ff00ff;
+            font-size: 24px;
+            font-weight: bold;
+            word-break: break-all;
+        }
+        .keys-list {
+            margin-top: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .key-item {
+            background: #222;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border-left: 5px solid #ff00ff;
+        }
+        .key-value {
+            color: #ff00ff;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .key-info {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 PAINEL DE KEYS</h1>
+        
+        <input type="text" id="userName" placeholder="Nome do usuário">
+        
+        <select id="validade">
+            <option value="1">1 dia</option>
+            <option value="7">7 dias</option>
+            <option value="30">30 dias</option>
+            <option value="0">Ilimitado</option>
+        </select>
+        
+        <button onclick="gerarKey()">🎲 GERAR KEY</button>
+        
+        <div class="key-display" id="keyDisplay" style="display:none">
+            <h3>KEY GERADA:</h3>
+            <div class="key" id="generatedKey"></div>
+        </div>
+        
+        <div class="keys-list" id="keysList">
+            <h3 style="color:#888;">📋 KEYS ATIVAS:</h3>
+        </div>
+    </div>
+
+    <script>
+        let keys = JSON.parse(localStorage.getItem('keys') || '[]');
+        
+        function gerarKey() {
+            let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = '';
+            for (let i = 0; i < 16; i++) {
+                if (i > 0 && i % 4 === 0) key += '-';
+                key += chars[Math.floor(Math.random() * chars.length)];
+            }
+            
+            document.getElementById('generatedKey').textContent = key;
+            document.getElementById('keyDisplay').style.display = 'block';
+            
+            let novaKey = {
+                key: key,
+                user: document.getElementById('userName').value || 'Anônimo',
+                validade: document.getElementById('validade').value,
+                criada: new Date().toLocaleString(),
+                ativa: true
+            };
+            
+            keys.unshift(novaKey);
+            localStorage.setItem('keys', JSON.stringify(keys));
+            atualizarLista();
+        }
+        
+        function atualizarLista() {
+            let html = '';
+            keys.forEach(k => {
+                html += `
+                    <div class="key-item">
+                        <div class="key-value">${k.key}</div>
+                        <div class="key-info">
+                            👤 ${k.user} | ⏰ ${k.validade}d<br>
+                            📅 ${k.criada}
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('keysList').innerHTML = 
+                '<h3 style="color:#888;">📋 KEYS ATIVAS:</h3>' + html;
+        }
+        
+        atualizarLista();
+    </script>
+</body>
+</html>
